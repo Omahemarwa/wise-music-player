@@ -2,5 +2,5 @@
   "name": "Wise Music Player",
   "description": "A high-fidelity offline music player featuring local media scanning, custom playlists, Now Playing screen with lyrics & queue, and rich audio playback.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
