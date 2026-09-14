@@ -426,11 +426,24 @@ export default function App() {
               {activeTab === 'home' && (
                 <HomeScreen
                   tracks={tracks}
+                  playlists={playlists}
                   currentTrack={currentTrack}
                   isPlaying={isPlaying}
                   onPlayTrack={handlePlayTrack}
                   onTogglePlay={handleTogglePlay}
                   onTrackOptions={(track) => setSelectedTrackForOptions(track)}
+                  onSelectPlaylist={(p) => {
+                    setSelectedPlaylistId(p.id);
+                    setActiveTab('playlists');
+                  }}
+                  onPlayPlaylist={(playlist) => {
+                    const playlistTracks = playlist.id === 'liked' 
+                      ? tracks.filter(t => t.isFavorite)
+                      : playlist.trackIds.map(id => tracks.find(t => t.id === id)).filter((t): t is Track => !!t);
+                    if (playlistTracks.length > 0) {
+                      handlePlayTrack(playlistTracks[0]);
+                    }
+                  }}
                 />
               )}
 
