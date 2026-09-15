@@ -340,12 +340,43 @@ export default function App() {
   };
 
   // Device storage scan simulation
-  const handleScanDevice = () => {
+  const handleScanDevice = async () => {
     setIsScanning(true);
-    setTimeout(() => {
+
+    try {
+      const { deviceAudioScanner } = await import('./services/deviceScanner');
+
+      if (!deviceAudioScanner.isNative) {
+        setIsScanning(false);
+        showToast('Device scan requires the Android app — tap Import to add an audio file here.');
+        return;
+      }
+
+      const granted = await deviceAudioScanner.requestPermission();
+      if (!granted) {
+        setIsScanning(false);
+        showToast('Storage permission was not granted');
+        return;
+      }
+
+      await deviceAudioScanner.scanDeviceAudio((p) => {
+        if (p.phase === 'done') {
+          setIsScanning(false);
+          showToast(
+            p.discovered > 0
+              ? `Device scan complete — ${p.discovered} audio files indexed`
+              : 'Device scan complete — no audio files found'
+          );
+        } else if (p.phase === 'error') {
+          setIsScanning(false);
+          showToast(p.message || 'Could not scan device storage');
+        }
+      });
+    } catch (e) {
+      console.error('[App] handleScanDevice error:', e);
       setIsScanning(false);
-      showToast('Scan complete: 342 audio files indexed');
-    }, 1200);
+      showToast('Could not scan device storage');
+    }
   };
 
   // Keyboard shortcut listener (Space = play/pause)

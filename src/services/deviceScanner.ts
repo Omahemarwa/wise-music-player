@@ -1,15 +1,44 @@
-import { getPlatform } from 'capacitor-is-not-imported'; // placeholder replaced below
 import { Capacitor } from '@capacitor/core';
-import { useEffect, useState } from 'react';
-import { INITIAL_TRACKS, INITIAL_PLAYLISTS, INITIAL_STORAGE_FOLDERS } from '../data/mockData';
-import { Track, Playlist, StorageFolder, FolderCategory } from '../types';
-import { loadSavedTracks, loadSavedPlaylists } from '../utils/storage';
-import { deviceAudioScanner } from '../services/deviceScanner';
-import { DeviceLibraryIndexer } from '../services/deviceLibraryIndexer';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Track } from '../types';
+
+// Walk the real external-storage audio folders on Android and build playable
+// Track objects. CONVERT_FILE_SRC ensures the Capacitor WebView can <audio>-play
+// the device file (http://localhost/_capacitor_file_/... — not a fake URL).
+
+const AUDIO_EXTENSIONS = new Set(['mp3', 'flac', 'm4a', 'aac', 'wav', 'ogg', 'opus', 'wma', 'aiff', 'aif', 'amr', 'mid', 'midi']);
+
+const SCAN_ROOTS = [
+  '/storage/emulated/0/Music',
+  '/storage/emulated/0/Download',
+  '/storage/emulated/0/Recordings',
+  '/storage/emulated/0/Podcasts',
+  '/storage/emulated/0/Ringtones',
+];
+
+const MAX_FILE_COUNT = 520;
+const MAX_DEPTH = 5;
+
+function folderToCategory(dirPath: string): Track['category'] {
+  if (dirPath.includes('/Music/')) return 'song';
+  if (dirPath.includes('/Download/')) return 'download';
+  if (dirPath.includes('/Recordings/')) return 'voice_note';
+  return 'song';
+}
+
+export interface ScanProgress {
+  scanned: number;
+  discovered: number;
+  phase: 'scan' | 'done' | 'cancelled' | 'error';
+  message?: string;
+}
 
 export class DeviceAudioScanner {
   private cancelled = false;
-  private env = getPlatform();
+
+  public get env(): string {
+    return Capacitor.getPlatform();
+  }
 
   public get isNative(): boolean {
     return this.env === 'android' || this.env === 'ios';
@@ -20,30 +49,21 @@ export class DeviceAudioScanner {
   }
 
   public async requestPermission(): Promise<boolean> {
-    if (!this.isNative()) return false; // web fallback — no native FS
+    if (!this.isNative) return false;
     try {
-      const { Filesystem } = await import('@capacitor/filesystem');
-      const state = await Filesystem.requestPermissions();
-      const granted = state.publicStorage === 'granted' || state.photos === 'granted';
-      if (!granted) {
-        throw new Error('Storage permission not granted');
-      }
+      await Filesystem.requestPermissions();
       return true;
     } catch (e) {
-      console.warn('[deviceScanner] Permission error:', e);
+      console.warn('[deviceScanner] Storage permission error:', e);
       return false;
     }
   }
 
-  public cancel() {
-    this.cancelled = true;
-  }
-
   public async scanDeviceAudio(onProgress: (p: ScanProgress) => void): Promise<void> {
     this.cancelled = false;
-    const isNative = this.isNative;
-    if (!isNative) {
-      onProgress({ scanned: 0, discovered: 0, phase: 'error', message: 'Full device scanning requires the Android app. Use Import for a single file here.' });
+
+    if (!this.isNative) {
+      onProgress({ scanned: 0, discovered: 0, phase: 'error', message: 'Full device scanning requires the native Android app — use Import for a single file here.' });
       return;
     }
 
@@ -53,95 +73,74 @@ export class DeviceAudioScanner {
       return;
     }
 
-    try {
-      const { Filesystem } = await import('@capacitor/filesystem');
-      const found: Track[] = [];
-      let scanned = 0;
+    const found: Track[] = [];
+    let scanned = 0;
 
-      const walk = async (dirPath: string, depth: number): Promise<void> => {
-        if (this.cancelled) return;
-        if (depth > MAX_DEPTH) return;
-        if (found.length >= MAX_FILE_COUNT) return;
+    const walk = async (dirPath: string, depth: number): Promise<void> => {
+      if (this.cancelled) return;
+      if (depth > MAX_DEPTH) return;
+      if (found.length >= MAX_FILE_COUNT) return;
 
-        let entries;
-        try {
-          entries = await Filesystem.readdir({ path: dirPath, directory: Directory.ExternalStorage });
-        } catch (e) {
-          return; // unreadable directory — skip silently
-        }
-
-        for (const entry of entries) {
-          if (this.cancelled) return;
-          const fullPath = `${dirPath}/${entry.name}`;
-
-          if (entry.type === 'directory') {
-            if (dirPath !== entry.name && entry.name.startsWith('.')) continue; // skip dot-folders
-            await walk(fullPath, depth + 1);
-          } else if (entry.type === 'file') {
-            const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-            if (!AUDIO_EXTENSIONS.has(ext)) continue;
-
-            scanned++;
-            const category = this.folderToCategory(dirPath);
-            const title = entry.name.replace(/\.[^.]*$/, '') || entry.name;
-
-            found.push({
-              id: `device-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              title,
-              artist: 'Unknown Artist',
-              album: 'Unknown Album',
-              duration: 0, // read from audio element after selection
-              coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80',
-              audioUrl: this.toPlayableUri(fullPath),
-              format: 'mp3',
-              isFavorite: false,
-              playCount: 0,
-              dateAdded: new Date().toISOString().split('T')[0],
-              folderPath: dirPath,
-              category,
-            });
-
-            if (scanned % 10 === 0) {
-              onProgress({ scanned, discovered: found.length, phase: 'scan', message: `Scanning… ${scanned} files` });
-            }
-          }
-        }
-      };
-
-      for (const root of SCAN_ROOTS) {
-        if (this.cancelled) break;
-        await walk(root, 0);
+      let entries;
+      try {
+        entries = await Filesystem.readdir({ path: dirPath, directory: Directory.ExternalStorage });
+      } catch (e) {
+        return; // unreadable directory — skip silently
       }
 
-      onProgress({
-        scanned,
-        discovered: found.length,
-        phase: this.cancelled ? 'cancelled' : 'done',
-        message: this.cancelled ? `Scan cancelled — ${found.length} audio files found` : `Scan complete — ${found.length} audio files found`,
-      });
-    } catch (e) {
-      console.error('[deviceScanner] Scan error:', e);
-      onProgress({ scanned: 0, discovered: 0, phase: 'error', message: 'Could not scan device storage' });
-    }
-  }
+      for (const entry of entries) {
+        if (this.cancelled) return;
 
-  private folderToCategory(folderPath: string): Track['category'] {
-    const p = folderPath.toLowerCase();
-    if (p.includes('download')) return 'download';
-    if (p.includes('record')) return 'voice_note';
-    if (p.includes('recording')) return 'recording';
-    if (p.includes('podcast')) return 'download';
-    return 'song';
-  }
+        const fullPath = `${dirPath}/${entry.name}`;
 
-  private toPlayableUri(inputPath: string): string {
-    const { convertFileSrc } = Capacitor || {};
-    try {
-      return convertFileSrc(inputPath);
-    } catch (e) {
-      console.warn('[deviceScanner] convertFileSrc failed:', e);
-      return inputPath;
+        if (entry.type === 'directory') {
+          if (!entry.name.startsWith('.')) {
+            await walk(fullPath, depth + 1);
+          }
+        } else if (entry.type === 'file') {
+          const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+          if (!AUDIO_EXTENSIONS.has(ext)) continue;
+
+          scanned++;
+          if (scanned % 10 === 0 || scanned % 25 === 0) {
+            const message = `Found ${found.length} audio files`;
+            onProgress({ scanned, discovered: found.length, phase: 'scan', message });
+          }
+
+          const title = entry.name.replace(/\.[^/.]+$/, '');
+          found.push({
+            id: `device-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            title: title || entry.name,
+            artist: 'Unknown Artist',
+            album: 'Unknown Album',
+            duration: 0, // metadata read after selection via audio element
+            coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+            audioUrl: fullPath,
+            format: ext as Track['format'],
+            bitrate: undefined,
+            isFavorite: false,
+            playCount: 0,
+            dateAdded: new Date().toISOString().split('T')[0],
+            folderPath: dirPath,
+            category: folderToCategory(dirPath),
+          });
+        }
+      }
+    };
+
+    for (const root of SCAN_ROOTS) {
+      if (this.cancelled) break;
+      await walk(root, 0);
     }
+
+    onProgress({
+      scanned,
+      discovered: found.length,
+      phase: this.cancelled ? 'cancelled' : 'done',
+      message: this.cancelled
+        ? `Scan cancelled — ${found.length} audio files found`
+        : `Scan complete — ${found.length} audio files found`,
+    });
   }
 }
 
