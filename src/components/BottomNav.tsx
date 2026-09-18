@@ -10,13 +10,13 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-[#181724]/95 backdrop-blur-xl border-t border-white/[0.08] shadow-2xl rounded-t-2xl pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-white/95 dark:bg-[#181724]/95 backdrop-blur-xl border-t border-slate-200 dark:border-white/[0.08] shadow-2xl rounded-t-2xl pb-safe">
       <div className="flex justify-around items-center px-6 pt-2.5 pb-3">
         {/* Home */}
         <button
           onClick={() => onSelectTab('home')}
           className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all duration-150 active:scale-95 cursor-pointer ${
-            activeTab === 'home' ? 'text-[#c7bfff] font-semibold' : 'text-[#958da1] hover:text-white'
+            activeTab === 'home' ? 'text-[#7c3aed] dark:text-[#c7bfff] font-semibold' : 'text-slate-500 dark:text-[#958da1] hover:text-slate-900 dark:hover:text-white'
           }`}
           aria-label="Home"
         >
@@ -31,7 +31,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab }) 
         <button
           onClick={() => onSelectTab('playlists')}
           className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all duration-150 active:scale-95 cursor-pointer ${
-            activeTab === 'playlists' ? 'text-[#c7bfff] font-semibold' : 'text-[#958da1] hover:text-white'
+            activeTab === 'playlists' ? 'text-[#7c3aed] dark:text-[#c7bfff] font-semibold' : 'text-slate-500 dark:text-[#958da1] hover:text-slate-900 dark:hover:text-white'
           }`}
           aria-label="Playlists"
         >
@@ -46,7 +46,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab }) 
         <button
           onClick={() => onSelectTab('library')}
           className={`flex flex-col items-center justify-center gap-1 flex-1 py-1 transition-all duration-150 active:scale-95 cursor-pointer ${
-            activeTab === 'library' ? 'text-[#c7bfff] font-semibold' : 'text-[#958da1] hover:text-white'
+            activeTab === 'library' ? 'text-[#7c3aed] dark:text-[#c7bfff] font-semibold' : 'text-slate-500 dark:text-[#958da1] hover:text-slate-900 dark:hover:text-white'
           }`}
           aria-label="Library"
         >
@@ -59,7 +59,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab }) 
       </div>
 
       {/* iOS Home Bar Indicator */}
-      <div className="w-32 h-1 bg-white/20 rounded-full mx-auto mb-1.5"></div>
+      <div className="w-32 h-1 bg-slate-300 dark:bg-white/20 rounded-full mx-auto mb-1.5"></div>
     </nav>
   );
 };

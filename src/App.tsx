@@ -497,8 +497,8 @@ export default function App() {
       permissionState === 'denied' && permissionAttemptsRef.current >= 2;
 
   return (
-      <div className="min-h-screen bg-[#0c0e14] text-[#e2e2eb] flex flex-col items-center justify-center p-0 select-none">
-        <div className="w-full max-w-[400px] h-[852px] min-h-[852px] bg-[#13121b] flex flex-col relative overflow-hidden rounded-[42px] border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)]">
+      <div className="min-h-screen bg-slate-100 dark:bg-[#0c0e14] text-slate-900 dark:text-[#e2e2eb] flex flex-col items-center justify-center p-0 select-none">
+        <div className="w-full max-w-[400px] h-[852px] min-h-[852px] bg-white dark:bg-[#13121b] flex flex-col relative overflow-hidden rounded-[42px] border border-slate-200 dark:border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)]">
           {isSplashActive ? (
               <SplashScreen onEnter={() => setIsSplashActive(false)} />
           ) : (
@@ -527,9 +527,9 @@ export default function App() {
 
                 {showPermissionBanner && (
                     <div className="mx-4 mt-2 mb-1 rounded-2xl bg-[#7c3aed]/15 border border-[#7c3aed]/40 p-3 flex items-start gap-3">
-                      <div className="flex-1 text-xs text-[#c7bfff]">
+                      <div className="flex-1 text-xs text-[#7c3aed] dark:text-[#c7bfff]">
                         <p className="font-semibold mb-0.5">Music permission blocked</p>
-                        <p className="text-[#c7bfff]/70">
+                        <p className="text-[#7c3aed]/70 dark:text-[#c7bfff]/70">
                           Android needs permission to see your songs. Enable it in
                           Settings, then come back and tap Scan.
                         </p>
@@ -669,7 +669,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
-                    className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-[#1c1a26]/95 border border-[#7c3aed]/50 text-white pl-4 pr-3 py-2 rounded-full shadow-2xl text-xs font-medium flex items-center gap-3 backdrop-blur-md max-w-[90%]"
+                    className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-white/95 dark:bg-[#1c1a26]/95 border border-[#7c3aed]/50 text-slate-900 dark:text-white pl-4 pr-3 py-2 rounded-full shadow-2xl text-xs font-medium flex items-center gap-3 backdrop-blur-md max-w-[90%]"
                 >
                   <div className="flex items-center gap-2 truncate">
                     <CheckCircle className="w-3.5 h-3.5 text-[#c7bfff] shrink-0" />

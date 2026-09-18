@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer utilities {
   .font-keania {
     font-family: 'Keania One', cursive, sans-serif;
@@ -27,6 +29,18 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* Smooth theme transitions across the app */
+html {
+  color-scheme: dark;
+}
+html:not(.dark) {
+  color-scheme: light;
+}
+
+body {
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Custom glow effects matching Nocturne Audio theme */
